@@ -1,0 +1,1298 @@
+import { useState, useEffect } from 'react';
+import { createRoot } from 'react-dom/client';
+import * as THREE from 'three';
+import { Plane, Users, Plus, LogOut, Copy, Check } from 'lucide-react';
+
+// Utility function for class names
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(' ');
+}
+
+// UI Components
+const Button = ({ className, variant = 'default', size = 'default', asChild = false, ...props }: any) => {
+  const baseClasses = 'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 outline-none';
+  const variantClasses = {
+    default: 'bg-blue-600 text-white hover:bg-blue-700',
+    destructive: 'bg-red-600 text-white hover:bg-red-700',
+    secondary: 'bg-gray-600 text-white hover:bg-gray-700',
+    outline: 'border border-gray-300 bg-white text-gray-900 hover:bg-gray-50',
+    ghost: 'hover:bg-gray-100 hover:text-gray-900',
+  };
+  const sizeClasses = {
+    default: 'h-10 px-4 py-2',
+    sm: 'h-9 rounded-md px-3',
+    lg: 'h-11 rounded-md px-8',
+    icon: 'h-10 w-10',
+  };
+
+  return (
+    <button
+      className={cn(baseClasses, variantClasses[variant], sizeClasses[size], className)}
+      {...props}
+    />
+  );
+};
+
+const Input = ({ className, type = 'text', ...props }: any) => {
+  return (
+    <input
+      type={type}
+      className={cn(
+        'flex h-10 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm ring-offset-white file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50',
+        className
+      )}
+      {...props}
+    />
+  );
+};
+
+// Configuration (placeholder - you'll need to replace with actual values)
+const projectId = 'your-project-id';
+const publicAnonKey = 'your-anon-key';
+
+// Types
+type GameState = 'username' | 'lobby' | 'game';
+type PlayerMode = 'flying' | 'parachuting' | 'ground';
+
+interface Player {
+  username: string;
+  position: { x: number; y: number; z: number };
+  rotation: { x: number; y: number; z: number };
+  health: number;
+  mode: PlayerMode;
+}
+
+interface UsernameScreenProps {
+  onSubmit: (username: string) => void;
+}
+
+const UsernameScreen: React.FC<UsernameScreenProps> = ({ onSubmit }) => {
+  const [username, setUsername] = useState('');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username.trim()) {
+      onSubmit(username.trim());
+    }
+  };
+
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-sky-400 to-sky-600">
+      <div className="bg-white/10 backdrop-blur-md p-12 rounded-2xl shadow-2xl border border-white/20 max-w-md w-full">
+        <div className="flex flex-col items-center mb-8">
+          <div className="bg-white/20 p-6 rounded-full mb-4">
+            <Plane className="w-16 h-16 text-white" />
+          </div>
+          <h1 className="text-white text-5xl mb-2">jarzd.io</h1>
+          <p className="text-white/80 text-center">
+            Multiplayer Flying & Shooting Game
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="username" className="block text-white mb-2">
+              Choose your pilot name
+            </label>
+            <Input
+              id="username"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Enter username"
+              className="bg-white/20 border-white/30 text-white placeholder:text-white/50"
+              maxLength={20}
+              autoFocus
+            />
+          </div>
+          <Button
+            type="submit"
+            className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+            disabled={!username.trim()}
+          >
+            Take Flight
+          </Button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+interface LobbyScreenProps {
+  username: string;
+  onCreateRoom: (code: string) => void;
+  onJoinRoom: (code: string) => void;
+}
+
+const LobbyScreen: React.FC<LobbyScreenProps> = ({ username, onCreateRoom, onJoinRoom }) => {
+  const [joinCode, setJoinCode] = useState('');
+  const [isCreating, setIsCreating] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const [error, setError] = useState('');
+
+  const generateRoomCode = () => {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  };
+
+  const handleCreateRoom = async () => {
+    setIsCreating(true);
+    setError('');
+    
+    try {
+      const code = generateRoomCode();
+      // Placeholder for actual API call
+      console.log('Creating room with code:', code);
+      onCreateRoom(code);
+    } catch (err) {
+      setError('Failed to create room. Please try again.');
+      console.error('Error creating room:', err);
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const handleJoinRoom = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!joinCode.trim()) return;
+
+    setIsJoining(true);
+    setError('');
+
+    try {
+      // Placeholder for actual API call
+      console.log('Joining room with code:', joinCode.toUpperCase());
+      onJoinRoom(joinCode.toUpperCase());
+    } catch (err) {
+      setError('Failed to join room. Please check the code and try again.');
+      console.error('Error joining room:', err);
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-gradient-to-b from-sky-400 to-sky-600">
+      <div className="bg-white/10 backdrop-blur-md p-12 rounded-2xl shadow-2xl border border-white/20 max-w-2xl w-full">
+        <div className="text-center mb-8">
+          <h1 className="text-white text-4xl mb-2">Welcome, {username}!</h1>
+          <p className="text-white/80">Create a room or join your friends</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Create Room */}
+          <div className="bg-white/10 p-6 rounded-xl border border-white/20">
+            <div className="flex items-center gap-2 mb-4">
+              <Plus className="w-6 h-6 text-white" />
+              <h2 className="text-white text-2xl">Create Room</h2>
+            </div>
+            <p className="text-white/70 mb-6">
+              Start a new game and share the code with your friends
+            </p>
+            <Button
+              onClick={handleCreateRoom}
+              disabled={isCreating}
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+            >
+              {isCreating ? 'Creating...' : 'Create Room'}
+            </Button>
+          </div>
+
+          {/* Join Room */}
+          <div className="bg-white/10 p-6 rounded-xl border border-white/20">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="w-6 h-6 text-white" />
+              <h2 className="text-white text-2xl">Join Room</h2>
+            </div>
+            <p className="text-white/70 mb-6">
+              Enter the room code from your friend
+            </p>
+            <form onSubmit={handleJoinRoom} className="space-y-4">
+              <Input
+                type="text"
+                value={joinCode}
+                onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
+                placeholder="ROOM CODE"
+                className="bg-white/20 border-white/30 text-white placeholder:text-white/50 text-center uppercase"
+                maxLength={6}
+              />
+              <Button
+                type="submit"
+                disabled={isJoining || !joinCode.trim()}
+                className="w-full bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                {isJoining ? 'Joining...' : 'Join Room'}
+              </Button>
+            </form>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mt-4 bg-red-500/20 border border-red-500/50 text-white p-3 rounded-lg text-center">
+            {error}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const Game: React.FC<any> = ({ username, roomCode, isHost, onLeave }) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const sceneRef = useRef<THREE.Scene | null>(null);
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
+  const playerPlaneRef = useRef<THREE.Group | null>(null);
+  const playerCharacterRef = useRef<THREE.Group | null>(null);
+  const parachuteRef = useRef<THREE.Group | null>(null);
+  const playersRef = useRef<Map<string, { plane?: THREE.Group; character?: THREE.Group; parachute?: THREE.Group }>>(new Map());
+  const bulletsRef = useRef<THREE.Group[]>([]);
+  const keysRef = useRef<Set<string>>(new Set());
+  const playerIdRef = useRef<string>(Math.random().toString(36).substring(7));
+  const [players, setPlayers] = useState<Record<string, Player>>({});
+  const [copied, setCopied] = useState(false);
+  const [playerMode, setPlayerMode] = useState<PlayerMode>('flying');
+  const [showControls, setShowControls] = useState(true);
+  const animationFrameRef = useRef<number>();
+  const lastUpdateRef = useRef<number>(0);
+
+  // Player state
+  const velocityRef = useRef(new THREE.Vector3(0, 0, 0));
+  const rotationSpeedRef = useRef({ pitch: 0, yaw: 0, roll: 0 });
+  const parachuteVelocityRef = useRef(new THREE.Vector3(0, 0, 0));
+
+  const createPlane = (color: number) => {
+    const planeGroup = new THREE.Group();
+
+    // Main fuselage
+    const fuselageGeometry = new THREE.CylinderGeometry(0.6, 0.45, 5, 32);
+    const fuselageMaterial = new THREE.MeshStandardMaterial({ 
+      color,
+      metalness: 0.8,
+      roughness: 0.3,
+    });
+    const fuselage = new THREE.Mesh(fuselageGeometry, fuselageMaterial);
+    fuselage.rotation.z = Math.PI / 2;
+    fuselage.castShadow = true;
+    planeGroup.add(fuselage);
+
+    // Wings
+    const wingGeometry = new THREE.BoxGeometry(0.2, 8, 2);
+    const wingMaterial = new THREE.MeshStandardMaterial({ color });
+    const wings = new THREE.Mesh(wingGeometry, wingMaterial);
+    wings.castShadow = true;
+    planeGroup.add(wings);
+
+    // Tail
+    const tailGeometry = new THREE.BoxGeometry(3, 0.2, 1);
+    const tail = new THREE.Mesh(tailGeometry, wingMaterial);
+    tail.position.set(-2, 0, 0);
+    tail.castShadow = true;
+    planeGroup.add(tail);
+
+    // Propeller
+    const propellerGroup = new THREE.Group();
+    for (let i = 0; i < 3; i++) {
+      const bladeGeometry = new THREE.BoxGeometry(0.1, 3, 0.2);
+      const blade = new THREE.Mesh(bladeGeometry, new THREE.MeshStandardMaterial({ color: 0x333333 }));
+      blade.rotation.x = (i * Math.PI * 2) / 3;
+      blade.position.x = 3;
+      propellerGroup.add(blade);
+    }
+    planeGroup.add(propellerGroup);
+    (planeGroup as any).propeller = propellerGroup;
+
+    return planeGroup;
+  };
+
+  const createCharacter = (color: number) => {
+    const characterGroup = new THREE.Group();
+
+    // Body
+    const bodyGeometry = new THREE.CapsuleGeometry(0.3, 0.8, 8, 16);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ color });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.castShadow = true;
+    characterGroup.add(body);
+
+    // Head
+    const headGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffdbac });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 0.8;
+    head.castShadow = true;
+    characterGroup.add(head);
+
+    return characterGroup;
+  };
+
+  const createParachute = () => {
+    const parachuteGroup = new THREE.Group();
+
+    // Canopy
+    const canopyGeometry = new THREE.SphereGeometry(3, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    const canopyMaterial = new THREE.MeshStandardMaterial({
+      color: 0xff6b6b,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: 0.9,
+    });
+    const canopy = new THREE.Mesh(canopyGeometry, canopyMaterial);
+    canopy.rotation.x = Math.PI;
+    canopy.position.y = 3;
+    canopy.castShadow = true;
+    parachuteGroup.add(canopy);
+
+    return parachuteGroup;
+  };
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    // Setup scene
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87ceeb);
+    scene.fog = new THREE.Fog(0x87ceeb, 100, 500);
+    sceneRef.current = scene;
+
+    // Setup camera
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.set(0, 5, -15);
+    cameraRef.current = camera;
+
+    // Setup renderer
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true;
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
+
+    // Add lights
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(50, 100, 50);
+    directionalLight.castShadow = true;
+    scene.add(directionalLight);
+
+    // Add ground plane
+    const groundGeometry = new THREE.PlaneGeometry(1000, 1000, 50, 50);
+    const groundMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4a7c59,
+      roughness: 0.8,
+    });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2;
+    ground.position.y = -20;
+    ground.receiveShadow = true;
+    scene.add(ground);
+
+    // Create player plane
+    const playerPlane = createPlane(0xff3333);
+    playerPlane.position.set(0, 50, 0);
+    scene.add(playerPlane);
+    playerPlaneRef.current = playerPlane;
+
+    // Create player character (hidden initially)
+    const playerCharacter = createCharacter(0xff3333);
+    playerCharacter.visible = false;
+    scene.add(playerCharacter);
+    playerCharacterRef.current = playerCharacter;
+
+    // Create parachute (hidden initially)
+    const parachute = createParachute();
+    parachute.visible = false;
+    scene.add(parachute);
+    parachuteRef.current = parachute;
+
+    // Handle window resize
+    const handleResize = () => {
+      if (!cameraRef.current || !rendererRef.current) return;
+      cameraRef.current.aspect = window.innerWidth / window.innerHeight;
+      cameraRef.current.updateProjectionMatrix();
+      rendererRef.current.setSize(window.innerWidth, window.innerHeight);
+    };
+    window.addEventListener('resize', handleResize);
+
+    // Keyboard controls
+    const handleKeyDown = (e: KeyboardEvent) => {
+      keysRef.current.add(e.key.toLowerCase());
+      if (e.key === ' ') {
+        e.preventDefault();
+        shoot();
+      }
+      if (e.key === 'f' && playerMode === 'flying') {
+        e.preventDefault();
+        jumpOut();
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      keysRef.current.delete(e.key.toLowerCase());
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+
+    // Animation loop
+    const animate = () => {
+      animationFrameRef.current = requestAnimationFrame(animate);
+
+      if (!cameraRef.current || !rendererRef.current || !sceneRef.current) return;
+
+      // Update based on mode
+      if (playerMode === 'flying' && playerPlaneRef.current) {
+        updatePlayerMovement();
+        updateCamera(playerPlaneRef.current);
+      } else if (playerMode === 'parachuting' && playerCharacterRef.current && parachuteRef.current) {
+        updateParachuting();
+        updateCamera(playerCharacterRef.current);
+      } else if (playerMode === 'ground' && playerCharacterRef.current) {
+        updateGroundMovement();
+        updateCamera(playerCharacterRef.current);
+      }
+
+      // Update bullets
+      updateBullets();
+
+      rendererRef.current.render(sceneRef.current, cameraRef.current);
+    };
+    animate();
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (rendererRef.current && containerRef.current) {
+        containerRef.current.removeChild(rendererRef.current.domElement);
+      }
+    };
+  }, []);
+
+  const updatePlayerMovement = () => {
+    if (!playerPlaneRef.current) return;
+
+    // Animate propeller
+    if ((playerPlaneRef.current as any).propeller) {
+      (playerPlaneRef.current as any).propeller.rotation.x += 0.5;
+    }
+
+    const keys = keysRef.current;
+    const speed = 0.3;
+    const rotationSpeed = 0.03;
+
+    // Yaw (left/right) - controlled by W/S
+    if (keys.has('w') || keys.has('arrowup')) {
+      rotationSpeedRef.current.yaw = Math.min(rotationSpeedRef.current.yaw + 0.002, 0.05);
+    } else if (keys.has('s') || keys.has('arrowdown')) {
+      rotationSpeedRef.current.yaw = Math.max(rotationSpeedRef.current.yaw - 0.002, -0.05);
+    } else {
+      rotationSpeedRef.current.yaw *= 0.95;
+    }
+
+    // Pitch (up/down) - controlled by A/D
+    if (keys.has('a') || keys.has('arrowleft')) {
+      rotationSpeedRef.current.pitch = Math.min(rotationSpeedRef.current.pitch + 0.002, 0.05);
+    } else if (keys.has('d') || keys.has('arrowright')) {
+      rotationSpeedRef.current.pitch = Math.max(rotationSpeedRef.current.pitch - 0.002, -0.05);
+    } else {
+      rotationSpeedRef.current.pitch *= 0.95;
+    }
+
+    // Roll
+    if (keys.has('q')) {
+      rotationSpeedRef.current.roll = Math.min(rotationSpeedRef.current.roll + 0.002, 0.05);
+    } else if (keys.has('e')) {
+      rotationSpeedRef.current.roll = Math.max(rotationSpeedRef.current.roll - 0.002, -0.05);
+    } else {
+      rotationSpeedRef.current.roll *= 0.95;
+    }
+
+    // Apply rotations
+    playerPlaneRef.current.rotateX(rotationSpeedRef.current.pitch);
+    playerPlaneRef.current.rotateY(rotationSpeedRef.current.yaw);
+    playerPlaneRef.current.rotateZ(rotationSpeedRef.current.roll);
+
+    // Move forward
+    const forward = new THREE.Vector3(1, 0, 0);
+    forward.applyQuaternion(playerPlaneRef.current.quaternion);
+    playerPlaneRef.current.position.add(forward.multiplyScalar(speed));
+
+    // Prevent going too low
+    if (playerPlaneRef.current.position.y < -15) {
+      playerPlaneRef.current.position.y = -15;
+    }
+  };
+
+  const jumpOut = () => {
+    if (!playerPlaneRef.current || !playerCharacterRef.current || !parachuteRef.current) return;
+
+    setPlayerMode('parachuting');
+    
+    // Hide plane, show character and parachute
+    playerPlaneRef.current.visible = false;
+    playerCharacterRef.current.visible = true;
+    parachuteRef.current.visible = true;
+
+    // Set character position to plane position
+    playerCharacterRef.current.position.copy(playerPlaneRef.current.position);
+    parachuteRef.current.position.copy(playerPlaneRef.current.position);
+
+    // Initial velocity
+    parachuteVelocityRef.current.set(0, -0.1, 0);
+  };
+
+  const updateParachuting = () => {
+    if (!playerCharacterRef.current || !parachuteRef.current) return;
+
+    const keys = keysRef.current;
+
+    // Horizontal movement
+    const moveSpeed = 0.15;
+    if (keys.has('w') || keys.has('arrowup')) {
+      parachuteVelocityRef.current.x += 0.01;
+    }
+    if (keys.has('s') || keys.has('arrowdown')) {
+      parachuteVelocityRef.current.x -= 0.01;
+    }
+    if (keys.has('a') || keys.has('arrowleft')) {
+      parachuteVelocityRef.current.z += 0.01;
+    }
+    if (keys.has('d') || keys.has('arrowright')) {
+      parachuteVelocityRef.current.z -= 0.01;
+    }
+
+    // Apply gravity with parachute resistance
+    parachuteVelocityRef.current.y -= 0.005;
+    parachuteVelocityRef.current.y = Math.max(parachuteVelocityRef.current.y, -0.3);
+
+    // Apply drag
+    parachuteVelocityRef.current.x *= 0.98;
+    parachuteVelocityRef.current.z *= 0.98;
+
+    // Update positions
+    playerCharacterRef.current.position.add(parachuteVelocityRef.current);
+    parachuteRef.current.position.copy(playerCharacterRef.current.position);
+
+    // Gentle swaying animation
+    parachuteRef.current.rotation.z = Math.sin(Date.now() * 0.002) * 0.1;
+    parachuteRef.current.rotation.x = Math.cos(Date.now() * 0.003) * 0.1;
+
+    // Check if landed
+    if (playerCharacterRef.current.position.y <= -18.5) {
+      playerCharacterRef.current.position.y = -18.5;
+      parachuteRef.current.visible = false;
+      setPlayerMode('ground');
+    }
+  };
+
+  const updateGroundMovement = () => {
+    if (!playerCharacterRef.current) return;
+
+    const keys = keysRef.current;
+    const moveSpeed = 0.2;
+
+    // Movement on ground
+    if (keys.has('w') || keys.has('arrowup')) {
+      playerCharacterRef.current.position.x += moveSpeed;
+    }
+    if (keys.has('s') || keys.has('arrowdown')) {
+      playerCharacterRef.current.position.x -= moveSpeed;
+    }
+    if (keys.has('a') || keys.has('arrowleft')) {
+      playerCharacterRef.current.position.z += moveSpeed;
+    }
+    if (keys.has('d') || keys.has('arrowright')) {
+      playerCharacterRef.current.position.z -= moveSpeed;
+    }
+
+    // Keep on ground
+    playerCharacterRef.current.position.y = -18.5;
+  };
+
+  const updateCamera = (target: THREE.Group) => {
+    if (!cameraRef.current) return;
+
+    let offset = new THREE.Vector3(0, 5, -15);
+    
+    if (playerMode === 'flying') {
+      offset = new THREE.Vector3(0, 5, -15);
+      offset.applyQuaternion(target.quaternion);
+    } else if (playerMode === 'parachuting') {
+      offset = new THREE.Vector3(-10, 5, 0);
+    } else if (playerMode === 'ground') {
+      offset = new THREE.Vector3(-8, 3, 0);
+    }
+
+    const targetCameraPos = new THREE.Vector3();
+    targetCameraPos.copy(target.position).add(offset);
+    
+    cameraRef.current.position.lerp(targetCameraPos, 0.1);
+    cameraRef.current.lookAt(target.position);
+  };
+
+  const shoot = () => {
+    if (!playerPlaneRef.current || !sceneRef.current || playerMode !== 'flying') return;
+
+    const bulletGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+    const bulletMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+    const bullet = new THREE.Mesh(bulletGeometry, bulletMaterial);
+
+    bullet.position.copy(playerPlaneRef.current.position);
+    const forward = new THREE.Vector3(1, 0, 0);
+    forward.applyQuaternion(playerPlaneRef.current.quaternion);
+    
+    (bullet as any).velocity = forward.multiplyScalar(2);
+    (bullet as any).life = 100;
+
+    sceneRef.current.add(bullet);
+    bulletsRef.current.push(bullet as any);
+  };
+
+  const updateBullets = () => {
+    if (!sceneRef.current) return;
+
+    bulletsRef.current = bulletsRef.current.filter((bullet) => {
+      (bullet as any).life--;
+      bullet.position.add((bullet as any).velocity);
+
+      if ((bullet as any).life <= 0) {
+        sceneRef.current?.remove(bullet);
+        return false;
+      }
+      return true;
+    });
+  };
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(roomCode);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleLeave = () => {
+    onLeave();
+  };
+
+  return (
+    <div className="relative w-full h-full">
+      <div ref={containerRef} className="w-full h-full" />
+      
+      {/* HUD */}
+      <div className="absolute top-0 left-0 right-0 p-4 bg-gradient-to-b from-black/50 to-transparent">
+        <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <div className="text-white">
+            <h1 className="text-3xl mb-1">jarzd.io</h1>
+            <p className="text-sm opacity-80">Room: {roomCode}</p>
+          </div>
+          
+          <div className="flex gap-2">
+            <Button
+              onClick={handleCopyCode}
+              className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+            >
+              {copied ? <Check className="w-4 h-4 mr-2" /> : <Copy className="w-4 h-4 mr-2" />}
+              {copied ? 'Copied!' : 'Copy Code'}
+            </Button>
+            <Button
+              onClick={handleLeave}
+              className="bg-red-500/80 hover:bg-red-600/80 text-white"
+            >
+              <LogOut className="w-4 h-4 mr-2" />
+              Leave
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Controls */}
+      <div className="absolute bottom-4 right-4 bg-black/50 backdrop-blur-sm p-4 rounded-lg text-white text-sm">
+        <div className="flex items-center justify-between mb-2">
+          <h3>Controls</h3>
+          <Button
+            onClick={() => setShowControls(!showControls)}
+            className="h-6 px-2 text-xs text-white hover:bg-white/20"
+          >
+            {showControls ? 'Hide' : 'Show'}
+          </Button>
+        </div>
+        {showControls && (
+          <>
+            {playerMode === 'flying' && (
+              <div className="space-y-1">
+                <p><span className="opacity-70">W/S or ↑/↓:</span> Yaw (Turn)</p>
+                <p><span className="opacity-70">A/D or ←/→:</span> Pitch (Up/Down)</p>
+                <p><span className="opacity-70">Q/E:</span> Roll</p>
+                <p><span className="opacity-70">SPACE:</span> Shoot</p>
+                <p><span className="opacity-70">F:</span> Jump Out</p>
+              </div>
+            )}
+            {playerMode === 'parachuting' && (
+              <div className="space-y-1">
+                <p><span className="opacity-70">WASD/Arrows:</span> Steer</p>
+                <p className="text-yellow-400">Parachuting...</p>
+              </div>
+            )}
+            {playerMode === 'ground' && (
+              <div className="space-y-1">
+                <p><span className="opacity-70">WASD/Arrows:</span> Move</p>
+                <p className="text-green-400">On Ground</p>
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  const [gameState, setGameState] = useState<GameState>('username');
+  const [username, setUsername] = useState('');
+  const [roomCode, setRoomCode] = useState('');
+  const [isHost, setIsHost] = useState(false);
+
+  const handleUsernameSubmit = (name: string) => {
+    setUsername(name);
+    setGameState('lobby');
+  };
+
+  const handleCreateRoom = (code: string) => {
+    setRoomCode(code);
+    setIsHost(true);
+    setGameState('game');
+  };
+
+  const handleJoinRoom = (code: string) => {
+    setRoomCode(code);
+    setIsHost(false);
+    setGameState('game');
+  };
+
+  const handleLeaveGame = () => {
+    setGameState('lobby');
+    setRoomCode('');
+    setIsHost(false);
+  };
+
+  return (
+    <div className="w-full h-screen bg-slate-900">
+      {gameState === 'username' && (
+        <UsernameScreen onSubmit={handleUsernameSubmit} />
+      )}
+      {gameState === 'lobby' && (
+        <LobbyScreen
+          username={username}
+          onCreateRoom={handleCreateRoom}
+          onJoinRoom={handleJoinRoom}
+        />
+      )}
+      {gameState === 'game' && (
+        <Game
+          username={username}
+          roomCode={roomCode}
+          isHost={isHost}
+          onLeave={handleLeaveGame}
+        />
+      )}
+    </div>
+  );
+};
+
+// CSS Styles
+const styles = `
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    overflow: hidden;
+  }
+
+  .space-y-1 > * + * {
+    margin-top: 0.25rem;
+  }
+
+  .space-y-4 > * + * {
+    margin-top: 1rem;
+  }
+
+  .grid {
+    display: grid;
+  }
+
+  .md\\:grid-cols-2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .gap-8 {
+    gap: 2rem;
+  }
+
+  .gap-2 {
+    gap: 0.5rem;
+  }
+
+  .p-4 {
+    padding: 1rem;
+  }
+
+  .p-6 {
+    padding: 1.5rem;
+  }
+
+  .p-12 {
+    padding: 3rem;
+  }
+
+  .p-3 {
+    padding: 0.75rem;
+  }
+
+  .mb-8 {
+    margin-bottom: 2rem;
+  }
+
+  .mb-2 {
+    margin-bottom: 0.5rem;
+  }
+
+  .mb-1 {
+    margin-bottom: 0.25rem;
+  }
+
+  .mt-4 {
+    margin-top: 1rem;
+  }
+
+  .mr-2 {
+    margin-right: 0.5rem;
+  }
+
+  .w-full {
+    width: 100%;
+  }
+
+  .h-full {
+    height: 100%;
+  }
+
+  .h-screen {
+    height: 100vh;
+  }
+
+  .h-10 {
+    height: 2.5rem;
+  }
+
+  .h-11 {
+    height: 2.75rem;
+  }
+
+  .h-9 {
+    height: 2.25rem;
+  }
+
+  .h-6 {
+    height: 1.5rem;
+  }
+
+  .h-16 {
+    height: 4rem;
+  }
+
+  .max-w-md {
+    max-width: 28rem;
+  }
+
+  .max-w-2xl {
+    max-width: 42rem;
+  }
+
+  .max-w-7xl {
+    max-width: 80rem;
+  }
+
+  .min-w-\\[200px\\] {
+    min-width: 200px;
+  }
+
+  .flex {
+    display: flex;
+  }
+
+  .items-center {
+    align-items: center;
+  }
+
+  .justify-center {
+    justify-content: center;
+  }
+
+  .justify-between {
+    justify-content: space-between;
+  }
+
+  .flex-col {
+    flex-direction: column;
+  }
+
+  .bg-slate-900 {
+    background-color: rgb(15 23 42);
+  }
+
+  .bg-gradient-to-b {
+    background-image: linear-gradient(to bottom, var(--tw-gradient-stops));
+  }
+
+  .from-sky-400 {
+    --tw-gradient-from: rgb(56 189 248);
+    --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgb(14 165 233));
+  }
+
+  .to-sky-600 {
+    --tw-gradient-to: rgb(2 132 199);
+  }
+
+  .bg-white\\/10 {
+    background-color: rgb(255 255 255 / 0.1);
+  }
+
+  .bg-white\\/20 {
+    background-color: rgb(255 255 255 / 0.2);
+  }
+
+  .bg-emerald-500 {
+    background-color: rgb(16 185 129);
+  }
+
+  .bg-emerald-600 {
+    background-color: rgb(5 150 105);
+  }
+
+  .hover\\:bg-emerald-600:hover {
+    background-color: rgb(5 150 105);
+  }
+
+  .bg-blue-500 {
+    background-color: rgb(59 130 246);
+  }
+
+  .hover\\:bg-blue-600:hover {
+    background-color: rgb(37 99 235);
+  }
+
+  .bg-blue-600 {
+    background-color: rgb(37 99 235);
+  }
+
+  .hover\\:bg-blue-700:hover {
+    background-color: rgb(29 78 216);
+  }
+
+  .bg-red-500\\/80 {
+    background-color: rgb(239 68 68 / 0.8);
+  }
+
+  .hover\\:bg-red-600\\/80:hover {
+    background-color: rgb(220 38 38 / 0.8);
+  }
+
+  .bg-red-500\\/20 {
+    background-color: rgb(239 68 68 / 0.2);
+  }
+
+  .bg-black\\/50 {
+    background-color: rgb(0 0 0 / 0.5);
+  }
+
+  .bg-gray-600 {
+    background-color: rgb(75 85 99);
+  }
+
+  .hover\\:bg-gray-700:hover {
+    background-color: rgb(55 65 81);
+  }
+
+  .bg-gray-100 {
+    background-color: rgb(243 244 246);
+  }
+
+  .hover\\:bg-gray-50:hover {
+    background-color: rgb(249 250 251);
+  }
+
+  .hover\\:bg-white\\/30:hover {
+    background-color: rgb(255 255 255 / 0.3);
+  }
+
+  .text-white {
+    color: rgb(255 255 255);
+  }
+
+  .text-red-500 {
+    color: rgb(239 68 68);
+  }
+
+  .text-yellow-400 {
+    color: rgb(250 204 21);
+  }
+
+  .text-green-400 {
+    color: rgb(74 222 128);
+  }
+
+  .text-sm {
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+  }
+
+  .text-5xl {
+    font-size: 3rem;
+    line-height: 1;
+  }
+
+  .text-4xl {
+    font-size: 2.25rem;
+    line-height: 2.5rem;
+  }
+
+  .text-3xl {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+
+  .text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+
+  .text-xs {
+    font-size: 0.75rem;
+    line-height: 1rem;
+  }
+
+  .text-center {
+    text-align: center;
+  }
+
+  .font-medium {
+    font-weight: 500;
+  }
+
+  .rounded-md {
+    border-radius: 0.375rem;
+  }
+
+  .rounded-2xl {
+    border-radius: 1rem;
+  }
+
+  .rounded-xl {
+    border-radius: 0.75rem;
+  }
+
+  .rounded-lg {
+    border-radius: 0.5rem;
+  }
+
+  .rounded-full {
+    border-radius: 9999px;
+  }
+
+  .border {
+    border-width: 1px;
+  }
+
+  .border-white\\/20 {
+    border-color: rgb(255 255 255 / 0.2);
+  }
+
+  .border-white\\/30 {
+    border-color: rgb(255 255 255 / 0.3);
+  }
+
+  .border-red-500\\/50 {
+    border-color: rgb(239 68 68 / 0.5);
+  }
+
+  .border-gray-300 {
+    border-color: rgb(209 213 219);
+  }
+
+  .shadow-2xl {
+    --tw-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+    --tw-shadow-colored: 0 25px 50px -12px var(--tw-shadow-color);
+    box-shadow: var(--tw-ring-offset-shadow, 0 0 #0000), var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+  }
+
+  .backdrop-blur-md {
+    backdrop-filter: blur(12px);
+  }
+
+  .backdrop-blur-sm {
+    backdrop-filter: blur(4px);
+  }
+
+  .opacity-80 {
+    opacity: 0.8;
+  }
+
+  .opacity-70 {
+    opacity: 0.7;
+  }
+
+  .transition-all {
+    transition-property: all;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+  }
+
+  .disabled\\:pointer-events-none:disabled {
+    pointer-events: none;
+  }
+
+  .disabled\\:opacity-50:disabled {
+    opacity: 0.5;
+  }
+
+  .hover\\:bg-accent:hover {
+    background-color: rgb(241 245 249);
+  }
+
+  .hover\\:text-accent-foreground:hover {
+    color: rgb(15 23 42);
+  }
+
+  .placeholder\\:text-white\\/50::placeholder {
+    color: rgb(255 255 255 / 0.5);
+  }
+
+  .placeholder\\:text-gray-500::placeholder {
+    color: rgb(107 114 128);
+  }
+
+  .outline-none {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+
+  .focus-visible\\:outline-none:focus-visible {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+
+  .focus-visible\\:ring-2:focus-visible {
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+  }
+
+  .focus-visible\\:ring-blue-600:focus-visible {
+    --tw-ring-color: rgb(37 99 235);
+  }
+
+  .ring-offset-white {
+    --tw-ring-offset-color: rgb(255 255 255);
+  }
+
+  .focus-visible\\:ring-offset-2:focus-visible {
+    --tw-ring-offset-width: 2px;
+  }
+
+  .relative {
+    position: relative;
+  }
+
+  .absolute {
+    position: absolute;
+  }
+
+  .top-0 {
+    top: 0px;
+  }
+
+  .left-0 {
+    left: 0px;
+  }
+
+  .right-0 {
+    right: 0px;
+  }
+
+  .top-24 {
+    top: 6rem;
+  }
+
+  .left-4 {
+    left: 1rem;
+  }
+
+  .bottom-4 {
+    bottom: 1rem;
+  }
+
+  .right-4 {
+    right: 1rem;
+  }
+
+  .w-4 {
+    width: 1rem;
+  }
+
+  .h-4 {
+    height: 1rem;
+  }
+
+  .pointer-events-none {
+    pointer-events: none;
+  }
+
+  .select-none {
+    user-select: none;
+  }
+
+  .uppercase {
+    text-transform: uppercase;
+  }
+
+  .block {
+    display: block;
+  }
+
+  @media (min-width: 768px) {
+    .md\\:grid-cols-2 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+`;
+
+// Initialize the app
+const initApp = () => {
+  // Inject styles
+  const styleElement = document.createElement('style');
+  styleElement.textContent = styles;
+  document.head.appendChild(styleElement);
+
+  // Create root and render app
+  const container = document.getElementById('root');
+  if (container) {
+    const root = createRoot(container);
+    root.render(<App />);
+  }
+};
+
+// Export for use in HTML
+export { initApp, App };
